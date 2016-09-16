@@ -1,6 +1,9 @@
+<<<<<<< HEAD
 # Prerequisites
 *.d
 
+=======
+>>>>>>> 32d6e23e781311bdeb977562178abbd06b0d7d2e
 # Object files
 *.o
 *.ko
