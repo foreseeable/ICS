@@ -6,15 +6,12 @@
 #include <assert.h>
 #include <stdio.h>
 
-int calcA(unsigned x) { return x > 0; }
-int calcB(unsigned x) { return (~x) > 0; }
-int calcC(unsigned x) {
-    x &= (1 << 8) - 1;
-    return (x > 0);
-}
+int calcA(unsigned x) { return !!x; }
+int calcB(unsigned x) { return !!(~x); }
+int calcC(unsigned x) { return !!(x & (1 << 8) - 1); }
 int calcD(unsigned x) {
     int w = sizeof(int) << 3;
-    return (~(x >> (w - 8))) > 0;
+    return !!(~(x >> (w - 8)));
 }
 int main() {
     unsigned x;

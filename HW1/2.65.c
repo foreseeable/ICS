@@ -8,12 +8,11 @@
 // w=32
 // return 1 when x contains an odd number of 1s;
 int odd_ones(unsigned x) {
-    int w = sizeof(int) << 3;
-    x ^= (x >> (w >> 1));
-    x ^= (x >> (w >> 2));
-    x ^= (x >> (w >> 3));
-    x ^= (x >> (w >> 4));
-    x ^= (x >> (w >> 5));
+    x ^= (x >> 16);
+    x ^= (x >> 8);
+    x ^= (x >> 4);
+    x ^= (x >> 2);
+    x ^= (x >> 1);
     return x & 1;
 }
 
