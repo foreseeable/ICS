@@ -13,7 +13,6 @@
 # Precompiled Headers
 *.gch
 *.pch
-*.c~
 
 # Libraries
 *.lib
