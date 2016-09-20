@@ -351,8 +351,8 @@ unsigned float_half(unsigned uf) {
         } else {
             uf = (uf ^ tmp2 ^ (tmp2 >> 1)) + (1 << 22);
         }
-    }
 	if ((tmp2 & 1) && (uf & 1)) uf++;
+    }
 	return uf;
 }
 /*
@@ -404,12 +404,8 @@ int float_f2i(unsigned uf) {
     int exp = (uf >> 23) & 0xFF, frac = uf & 0x7FFFFF;
     if (exp < 127) return 0;
     if (exp > 158) return 0x80000000;
-    frac = (frac | 0x800000) >> (150 - exp);
+	if(150>=exp)frac = (frac | 0x800000) >> (150 - exp);
+	else frac = (frac |0x800000) <<(exp - 150);
+	if(frac>>31)return 0x80000000;
     return sig ? -frac : frac;
 }
-/*
-int main(){
-	int n=0x800000;
-	float_i2f(n);
-}
-*/
