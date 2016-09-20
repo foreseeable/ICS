@@ -171,9 +171,8 @@ NOTES:
  *   Rating: 1
  */
 int thirdBits(void) {
-    int x = 1;
-    x |= (x << 3);
-    x |= (x << 6);
+    // construct by doubling
+    int x = (9 << 6) + 9;
     x |= (x << 12);
     x |= (x << 24);
     return x;
@@ -185,8 +184,16 @@ int thirdBits(void) {
  *   Max ops: 10
  *   Rating: 1
  */
-int isTmin(int x) { return 2; }
-// 2
+int isTmin(int x) {
+    // x is Tmin only when
+    //  1. there is only one of 1 bit.
+    //  2. the 1 bit is at the most significant bit.
+    //  3. x is not zero
+    //  !(x&(x-1)) assert 1.
+    //  !(x+x) assert 2.
+    //  !!x assert 3
+    return !((x + x) | !x);
+}
 /*
  * isNotEqual - return 0 if x == y, and 1 otherwise
  *   Examples: isNotEqual(5,5) = 0, isNotEqual(4,5) = 1
@@ -194,7 +201,10 @@ int isTmin(int x) { return 2; }
  *   Max ops: 6
  *   Rating: 2
  */
-int isNotEqual(int x, int y) { return 2; }
+int isNotEqual(int x, int y) {
+    // x==y iff x^y==0
+    return !!(x ^ y);
+}
 /*
  * anyOddBit - return 1 if any odd-numbered bit in word set to 1
  *   Examples anyOddBit(0x5) = 0, anyOddBit(0x7) = 1
@@ -202,7 +212,14 @@ int isNotEqual(int x, int y) { return 2; }
  *   Max ops: 12
  *   Rating: 2
  */
-int anyOddBit(int x) { return 2; }
+int anyOddBit(int x) {
+    int y = 2;
+    y ^= y << 2;
+    y ^= y << 4;
+    y ^= y << 8;
+    y ^= y << 16;
+    return !!(x & y);
+}
 /*
  * negate - return -x
  *   Example: negate(1) = -1.
@@ -210,7 +227,7 @@ int anyOddBit(int x) { return 2; }
  *   Max ops: 5
  *   Rating: 2
  */
-int negate(int x) { return 2; }
+int negate(int x) { return ~x + 1; }
 // 3
 /*
  * conditional - same as x ? y : z
@@ -219,7 +236,11 @@ int negate(int x) { return 2; }
  *   Max ops: 16
  *   Rating: 3
  */
-int conditional(int x, int y, int z) { return 2; }
+int conditional(int x, int y, int z) {
+    return (y ^ z) & (~!!x + 1) ^ z;
+    // x==1:y
+    // else z
+}
 /*
  * subOK - Determine if can compute x-y without overflow
  *   Example: subOK(0x80000000,0x80000000) = 1,
@@ -228,7 +249,11 @@ int conditional(int x, int y, int z) { return 2; }
  *   Max ops: 20
  *   Rating: 3
  */
-int subOK(int x, int y) { return 2; }
+// min <= x - y <= max
+int subOK(int x, int y) {
+    int w = x + ~y + 1;
+    return !(((x ^ y) & (w ^ x)) >> 31);
+}
 /*
  * isGreater - if x > y  then return 1, else return 0
  *   Example: isGreater(4,5) = 0, isGreater(5,4) = 1
@@ -236,7 +261,11 @@ int subOK(int x, int y) { return 2; }
  *   Max ops: 24
  *   Rating: 3
  */
-int isGreater(int x, int y) { return 2; }
+int isGreater(int x, int y) {
+    //
+    int w = (x ^ y);
+    return !!(((~w & (y + ~x + 1)) | (w & ~x)) >> 31);
+}
 // 4
 /*
  * bitParity - returns 1 if x contains an odd number of 0's
@@ -245,12 +274,22 @@ int isGreater(int x, int y) { return 2; }
  *   Max ops: 20
  *   Rating: 4
  */
-int bitParity(int x) { return 2; }
+int bitParity(int x) {
+    x ^= (x >> 16);
+    x ^= (x >> 8);
+    x ^= (x >> 4);
+    x ^= (x >> 2);
+    x ^= (x >> 1);
+    return x & 1;
+}
 /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
  *  Examples: howManyBits(12) = 5
+ *                              01100
  *            howManyBits(298) = 10
+ *
  *            howManyBits(-5) = 4
+ *                              1011
  *            howManyBits(0)  = 1
  *            howManyBits(-1) = 1
  *            howManyBits(0x80000000) = 32
@@ -258,7 +297,35 @@ int bitParity(int x) { return 2; }
  *  Max ops: 90
  *  Rating: 4
  */
-int howManyBits(int x) { return 0; }
+/*
+ * 1:-1     0
+ * 2:-2     1
+ * 3:-4     3
+ * 4:-8     7
+ * 5:-16    15
+*/
+int howManyBits(int x) {
+    int tmp = x >> 31, w1 = 0x55, w2 = 0x33, w3 = 0x0f, w4 = 0xff,
+        w5 = w4 + (w4 << 8);
+    x ^= tmp;
+    x |= x >> 1;
+    x |= x >> 2;
+    x |= x >> 4;
+    x |= x >> 8;
+    x |= x >> 16;
+
+    w1 = w1 + (w1 << 8) + (w1 << 16) + (w1 << 24);
+    w2 = w2 + (w2 << 8) + (w2 << 16) + (w2 << 24);
+    w3 = w3 + (w3 << 8) + (w3 << 16) + (w3 << 24);
+    w4 = w4 + (w4 << 16);
+    x = (x & w1) + ((x >> 1) & w1);
+    x = (x & w2) + ((x >> 2) & w2);
+    x = (x & w3) + ((x >> 4) & w3);
+    x = (x & w4) + ((x >> 8) & w4);
+    x = (x & w5) + ((x >> 16) & w5);
+    x++;
+    return x;
+}
 // float
 /*
  * float_half - Return bit-level equivalent of expression 0.5*f for
@@ -271,7 +338,25 @@ int howManyBits(int x) { return 0; }
  *   Max ops: 30
  *   Rating: 4
  */
-unsigned float_half(unsigned uf) { return 2; }
+unsigned float_half(unsigned uf) {
+    int mask = (1 << 8) - 1;
+    int tmp = (uf >> 23) & mask;
+    if (tmp ^ mask) {
+        uf ^= tmp << 23;
+        if (tmp > 1) {
+            uf = uf ^ ((tmp - 1) << 23);
+        } else if (tmp == 0) {
+            int tmp2 = uf & ((1 << 23) - 1);
+            uf = uf ^ tmp2 ^ (tmp2 >> 1);
+            if ((tmp2 & 1) && (uf & 1)) uf++;
+        } else {
+            int tmp2 = uf & ((1 << 23) - 1);
+            uf = uf ^ tmp2 ^ (tmp2 >> 1) + (1 << 22);
+            if ((tmp2 & 1) && (uf & 1)) uf++;
+        }
+    }
+    return uf;
+}
 /*
  * float_i2f - Return bit-level equivalent of expression (float) x
  *   Result is returned as unsigned int, but
@@ -281,7 +366,30 @@ unsigned float_half(unsigned uf) { return 2; }
  *   Max ops: 30
  *   Rating: 4
  */
-unsigned float_i2f(int x) { return 2; }
+unsigned float_i2f(int x) {
+    int limit = 1 << 23;
+    int sig = x >> 31;
+    if (sig) x = -x;
+    if (x == 0) return x;
+    if (x < 0) x = -x;
+    int cnt = 31;
+    while (!(x & (1 << cnt))) cnt--;
+    x -= 1 << cnt;
+    int tmp;
+    if (cnt > 23) {
+        int rig = cnt - 24;
+        tmp = x >> (rig + 1);
+        if (((x >> rig) & 1)) {
+            int mask = (1 << rig) - 1;
+            if ((x & mask) || tmp & 1) tmp++;
+        }
+    } else {
+        int lef = 23 - cnt;
+        tmp = x << lef;
+    }
+    cnt += (1 << 7) - 1;
+    return (sig << 31) + (cnt << 23) + tmp;
+}
 /*
  * float_f2i - Return bit-level equivalent of expression (int) f
  *   for floating point argument f.
@@ -294,4 +402,21 @@ unsigned float_i2f(int x) { return 2; }
  *   Max ops: 30
  *   Rating: 4
  */
-int float_f2i(unsigned uf) { return 2; }
+int float_f2i(unsigned uf) {
+    int sig = uf & 0x80000000;
+    int exp = (uf >> 23) & 0xFF, frac = uf & 0x7FFFFF;
+    if (exp < 127) return 0;
+    if (exp > 158) return 0x80000000;
+    frac = (frac | 0x800000) >> (150 - exp);
+    return sig ? -frac : frac;
+}
+/*
+int main() {
+    int tmp = 1065353249;
+    printf("%.9f\n", (float)tmp);
+    printf("%u\n", float_i2f(tmp));
+    tmp = -tmp;
+    printf("%.9f\n", (float)tmp);
+    printf("%u\n", float_i2f(tmp));
+}
+*/
