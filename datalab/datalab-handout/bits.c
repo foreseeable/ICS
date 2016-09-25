@@ -24,11 +24,11 @@ You will provide your solution to the Data Lab by
 editing the collection of functions in this source file.
 
 INTEGER CODING RULES:
- 
+
   Replace the "return" statement in each function with one
-  or more lines of C code that implements the function. Your code 
+  or more lines of C code that implements the function. Your code
   must conform to the following style:
- 
+
   int Funct(arg1, arg2, ...) {
       /* brief description of how your implementation works */
       int var1 = Expr1;
@@ -47,7 +47,7 @@ INTEGER CODING RULES:
   2. Function arguments and local variables (no global variables).
   3. Unary integer operations ! ~
   4. Binary integer operations & ^ | + << >>
-    
+
   Some of the problems restrict the set of allowed operators even further.
   Each "Expr" may consist of multiple operators. You are not restricted to
   one operator per line.
@@ -62,7 +62,7 @@ INTEGER CODING RULES:
   7. Use any data type other than int.  This implies that you
      cannot use arrays, structs, or unions.
 
- 
+
   You may assume that your machine:
   1. Uses 2s complement, 32-bit representations of integers.
   2. Performs right shifts arithmetically.
@@ -106,26 +106,26 @@ You are expressly forbidden to:
 
 
 NOTES:
-  1. Use the dlc (data lab checker) compiler (described in the handout) to 
+  1. Use the dlc (data lab checker) compiler (described in the handout) to
      check the legality of your solutions.
   2. Each function has a maximum number of operators (! ~ & ^ | + << >>)
-     that you are allowed to use for your implementation of the function. 
-     The max operator count is checked by dlc. Note that '=' is not 
+     that you are allowed to use for your implementation of the function.
+     The max operator count is checked by dlc. Note that '=' is not
      counted; you may use as many of these as you want without penalty.
   3. Use the btest test harness to check your functions for correctness.
   4. Use the BDD checker to formally verify your functions
   5. The maximum number of ops for each function is given in the
-     header comment for each function. If there are any inconsistencies 
+     header comment for each function. If there are any inconsistencies
      between the maximum ops in the writeup and in this file, consider
      this file the authoritative source.
 
 /*
  * STEP 2: Modify the following functions according the coding rules.
- * 
+ *
  *   IMPORTANT. TO AVOID GRADING SURPRISES:
  *   1. Use the dlc compiler to check that your solutions conform
  *      to the coding rules.
- *   2. Use the BDD checker to formally verify that your solutions produce 
+ *   2. Use the BDD checker to formally verify that your solutions produce
  *      the correct answers.
  */
 
@@ -171,10 +171,11 @@ NOTES:
  *   Rating: 1
  */
 int thirdBits(void) {
-    // construct by doubling
-    int x = (9 << 6) + 9;
-    x |= (x << 12);
-    x |= (x << 24);
+    // 显然x=0111...111
+    // 倍增构造即可。
+    int x = 0111;
+    x |= (x << 9);
+    x |= (x << 18);
     return x;
 }
 /*
@@ -185,13 +186,7 @@ int thirdBits(void) {
  *   Rating: 1
  */
 int isTmin(int x) {
-    // x is Tmin only when
-    //  1. there is only one of 1 bit.
-    //  2. the 1 bit is at the most significant bit.
-    //  3. x is not zero
-    //  !(x&(x-1)) assert 1.
-    //  !(x+x) assert 2.
-    //  !!x assert 3
+    // x为Tmin当且仅当x非0且x+x=0
     return !((x + x) | !x);
 }
 /*
@@ -213,9 +208,10 @@ int isNotEqual(int x, int y) {
  *   Rating: 2
  */
 int anyOddBit(int x) {
-    int y = 2;
-    y ^= y << 2;
-    y ^= y << 4;
+    //看x与10101010101010...
+    // and起来是否非0
+    //倍增构造
+    int y = 0xAA;
     y ^= y << 8;
     y ^= y << 16;
     return !!(x & y);
@@ -227,8 +223,9 @@ int anyOddBit(int x) {
  *   Max ops: 5
  *   Rating: 2
  */
-int negate(int x) { 
-	return (~x)+1 ;
+int negate(int x) {
+    //。。
+    return (~x) + 1;
 }
 // 3
 /*
@@ -239,9 +236,9 @@ int negate(int x) {
  *   Rating: 3
  */
 int conditional(int x, int y, int z) {
-    return ((y ^ z) & (~!!x + 1)) ^ z;
-    // x==1:y
-    // else z
+    //(~!x)+1在x=0的时候为-1
+    //在x非0时为0。
+    return ((y ^ z) & ((~!x) + 1)) ^ y;
 }
 /*
  * subOK - Determine if can compute x-y without overflow
@@ -253,6 +250,8 @@ int conditional(int x, int y, int z) {
  */
 // min <= x - y <= max
 int subOK(int x, int y) {
+    //若xy同号，则减法没有理由溢出，
+    //否则，若减法结果与x异号时，就会溢出
     int w = x + ~y + 1;
     return !(((x ^ y) & (w ^ x)) >> 31);
 }
@@ -264,11 +263,12 @@ int subOK(int x, int y) {
  *   Rating: 3
  */
 int isGreater(int x, int y) {
-    //
+    //本质与上题相同。
+    //如果xy符号位不同，那么结果显然
+    //否则看x-y的符号。
     int w = (x ^ y);
-    return !!(((~w & (y + ~x + 1)) | (w & ~x)) >> 31);
+    return !(((w | (x + ~y)) & (~w | x)) >> 31);
 }
-// 4
 /*
  * bitParity - returns 1 if x contains an odd number of 0's
  *   Examples: bitParity(5) = 0, bitParity(7) = 1
@@ -277,6 +277,7 @@ int isGreater(int x, int y) {
  *   Rating: 4
  */
 int bitParity(int x) {
+    //分治法。
     x ^= (x >> 16);
     x ^= (x >> 8);
     x ^= (x >> 4);
@@ -307,25 +308,25 @@ int bitParity(int x) {
  * 5:-16    15
 */
 int howManyBits(int x) {
-    int tmp = x >> 31, w1 = 0x55, w2 = 0x33, w3 = 0x0f, w4 = 0xff,
-        w5 = w4 + (w4 << 8);
+    int tmp = x >> 31, w1 = 0x55, w2 = 0x33, w3 = 0x0f, w4 = 0xff;
     x ^= tmp;
     x |= x >> 1;
     x |= x >> 2;
     x |= x >> 4;
     x |= x >> 8;
     x |= x >> 16;
-
-    w1 = w1 + (w1 << 8) + (w1 << 16) + (w1 << 24);
-    w2 = w2 + (w2 << 8) + (w2 << 16) + (w2 << 24);
-    w3 = w3 + (w3 << 8) + (w3 << 16) + (w3 << 24);
+    //这一步保证x变为
+    //形如0000011111...111的数字。
+    //接下来是并行分治求__builtin_popcount.
     w4 = w4 + (w4 << 16);
+    w3 = w4 ^ (w4 << 4);
+    w2 = w3 ^ (w3 << 2);
+    w1 = w2 ^ (w2 << 1);
     x = (x & w1) + ((x >> 1) & w1);
     x = (x & w2) + ((x >> 2) & w2);
     x = (x & w3) + ((x >> 4) & w3);
     x = (x & w4) + ((x >> 8) & w4);
-    x = (x & w5) + ((x >> 16) & w5);
-    return x+1;
+    return ((x + (x >> 16)) & 0xff) + 1;
 }
 // float
 /*
@@ -340,20 +341,27 @@ int howManyBits(int x) {
  *   Rating: 4
  */
 unsigned float_half(unsigned uf) {
-    int tmp = (uf >> 23) &0xFF;
-	int tmp2 = uf & ((1 << 23) - 1);
-    if (tmp ^ 0xFF) {
-        uf ^= tmp << 23;
-        if (tmp > 1) {
-            return uf ^ ((tmp - 1) << 23);
-        } else if (tmp == 0) {
-            uf = uf ^ tmp2 ^ (tmp2 >> 1);
+    //就是模拟，详细分析见homework2内分析
+    int tmp = uf & 0x7f800000;
+    int tmp2 = uf & 0x7fffff;
+    if (tmp ^ 0x7f800000) {
+        //非inf,nan
+        if (tmp > 0x800000) {
+            // exp项减1
+            return uf - 0x800000;
         } else {
-            uf = (uf ^ tmp2 ^ (tmp2 >> 1)) + (1 << 22);
+            uf ^= tmp2;
+            if (tmp) {
+                // normalized到denormalized
+                uf = (uf ^ (tmp2 >> 1)) - 0x400000;
+            } else {
+                uf = uf ^ (tmp2 >> 1);
+            }
         }
-	if ((tmp2 & 1) && (uf & 1)) uf++;
+        // round2even
+        if ((tmp2 & 1) && (uf & 1)) uf++;
     }
-	return uf;
+    return uf;
 }
 /*
  * float_i2f - Return bit-level equivalent of expression (float) x
@@ -365,7 +373,8 @@ unsigned float_half(unsigned uf) {
  *   Rating: 4
  */
 unsigned float_i2f(int x) {
-    int sig = x >> 31;
+    //同样也是暴力模拟
+    int sig = x & 0x80000000;
     int cnt = 31;
     int tmp;
     if (sig) x = -x;
@@ -385,7 +394,7 @@ unsigned float_i2f(int x) {
         tmp = x << lef;
     }
     cnt += 0x7F;
-    return (sig << 31) + (cnt << 23) + tmp;
+    return sig + (cnt << 23) + tmp;
 }
 /*
  * float_f2i - Return bit-level equivalent of expression (int) f
@@ -400,12 +409,17 @@ unsigned float_i2f(int x) {
  *   Rating: 4
  */
 int float_f2i(unsigned uf) {
+    //没什么好解释的
     int sig = uf & 0x80000000;
     int exp = (uf >> 23) & 0xFF, frac = uf & 0x7FFFFF;
     if (exp < 127) return 0;
+    //小于1
     if (exp > 158) return 0x80000000;
-	if(150>=exp)frac = (frac | 0x800000) >> (150 - exp);
-	else frac = (frac |0x800000) <<(exp - 150);
-	if(frac>>31)return 0x80000000;
+    //超过表示范围
+    if (150 >= exp)
+        frac = (frac | 0x800000) >> (150 - exp);
+    else
+        frac = (frac | 0x800000) << (exp - 150);
+    if (frac >> 31) return 0x80000000;
     return sig ? -frac : frac;
 }
